@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Everest Voting System | Grade 12 Committee Election</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #1e3c72;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: #1e3c72;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .error {
+            background: #ff4444;
+            color: white;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .success {
+            background: #4cd137;
+            color: white;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .candidates-grid {
+            display: grid;
+            gap: 15px;
+            margin: 20px 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .candidate-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            transition: all 0.2s;
+        }
+        
+        .candidate-item:hover {
+            border-color: #1e3c72;
+            background: #f8f9fa;
+        }
+        
+        .candidate-item input {
+            margin-right: 15px;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .candidate-item label {
+            flex: 1;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        
+        .vote-counter {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        
+        .vote-counter span {
+            color: #1e3c72;
+            font-size: 1.3rem;
+        }
+        
+        .disabled {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Login Card -->
+        <div id="loginCard" class="card">
+            <div class="header">
+                <h1>🗳️ Grade 12 Committee Election</h1>
+                <p>Enter your Student ID to vote</p>
+            </div>
+            <div id="loginError" class="error hidden"></div>
+            <div class="input-group">
+                <label>Student ID Number</label>
+                <input type="text" id="studentId" placeholder="Example: 2023001">
+            </div>
+            <button class="btn" onclick="verifyStudent()">Continue to Vote</button>
+        </div>
+        
+        <!-- Voting Card -->
+        <div id="votingCard" class="card hidden">
+            <div class="header">
+                <h1>🗳️ Select Your Candidates</h1>
+                <p id="welcomeMessage"></p>
+            </div>
+            <div id="votingError" class="error hidden"></div>
+            <div class="vote-counter">
+                Selected: <span id="selectedCount">0</span> of 15
+            </div>
+            <div id="candidatesList" class="candidates-grid"></div>
+            <button class="btn" onclick="submitVote()">Submit Your Vote</button>
+        </div>
+        
+        <!-- Thank You Card -->
+        <div id="thankYouCard" class="card hidden">
+            <div class="header">
+                <h1>✅ Thank You for Voting!</h1>
+                <p>Your vote has been recorded.</p>
+                <p style="margin-top: 20px;">You helped shape the future of Everest Youth Academy.</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
+        let currentStudent = null;
+        let candidates = [];
+        let selectedCandidates = [];
+        
+        async function verifyStudent() {
+            const studentId = document.getElementById('studentId').value.trim();
+            const errorDiv = document.getElementById('loginError');
+            
+            if (!studentId) {
+                errorDiv.textContent = 'Please enter your Student ID';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+            
+            errorDiv.classList.add('hidden');
+            
+            try {
+                const response = await fetch(`${API_URL}?action=checkVoter&id=${studentId}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    errorDiv.textContent = data.error;
+                    errorDiv.classList.remove('hidden');
+                    return;
+                }
+                
+                if (data.success) {
+                    currentStudent = { id: studentId, name: data.name };
+                    document.getElementById('welcomeMessage').textContent = `Welcome, ${data.name}! You can select up to 15 candidates.`;
+                    await loadCandidates();
+                    document.getElementById('loginCard').classList.add('hidden');
+                    document.getElementById('votingCard').classList.remove('hidden');
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Connection error. Please try again.';
+                errorDiv.classList.remove('hidden');
+            }
+        }
+        
+        async function loadCandidates() {
+            try {
+                const response = await fetch(`${API_URL}?action=getCandidates`);
+                candidates = await response.json();
+                
+                const container = document.getElementById('candidatesList');
+                container.innerHTML = '';
+                
+                candidates.forEach(candidate => {
+                    const div = document.createElement('div');
+                    div.className = 'candidate-item';
+                    div.innerHTML = `
+                        <input type="checkbox" value="${candidate.id}" onchange="toggleCandidate(this, ${candidate.id})">
+                        <label>${candidate.name}</label>
+                    `;
+                    container.appendChild(div);
+                });
+            } catch (error) {
+                console.error('Failed to load candidates:', error);
+            }
+        }
+        
+        function toggleCandidate(checkbox, candidateId) {
+            if (checkbox.checked) {
+                if (selectedCandidates.length >= 15) {
+                    checkbox.checked = false;
+                    alert('You can only select up to 15 candidates');
+                    return;
+                }
+                selectedCandidates.push(candidateId);
+            } else {
+                const index = selectedCandidates.indexOf(candidateId);
+                if (index > -1) selectedCandidates.splice(index, 1);
+            }
+            document.getElementById('selectedCount').textContent = selectedCandidates.length;
+        }
+        
+        async function submitVote() {
+            if (selectedCandidates.length === 0) {
+                alert('Please select at least one candidate');
+                return;
+            }
+            
+            if (selectedCandidates.length > 15) {
+                alert('You cannot select more than 15 candidates');
+                return;
+            }
+            
+            if (!confirm(`You are voting for ${selectedCandidates.length} candidates. Confirm your vote?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'submitVote',
+                        voterId: currentStudent.id,
+                        selectedCandidates: selectedCandidates
+                    })
+                });
+                
+                document.getElementById('votingCard').classList.add('hidden');
+                document.getElementById('thankYouCard').classList.remove('hidden');
+            } catch (error) {
+                document.getElementById('votingError').textContent = 'Failed to submit vote. Please try again.';
+                document.getElementById('votingError').classList.remove('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
