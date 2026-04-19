@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin | Voting Results</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: #1e3c72; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .card { background: white; border-radius: 20px; padding: 30px; margin-bottom: 20px; }
+        h1 { color: #1e3c72; margin-bottom: 20px; }
+        .login-box { max-width: 400px; margin: 100px auto; }
+        input, button { width: 100%; padding: 12px; margin-bottom: 15px; border: 2px solid #e0e0e0; border-radius: 8px; }
+        button { background: #1e3c72; color: white; font-weight: bold; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e0e0e0; }
+        th { background: #1e3c72; color: white; }
+        .winner { background: #ffd700; font-weight: bold; }
+        .error { color: #ff4444; margin-bottom: 15px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loginBox" class="card login-box">
+            <h1>Admin Login</h1>
+            <div id="loginError" class="error"></div>
+            <input type="password" id="adminPassword" placeholder="Enter admin password">
+            <button onclick="login()">Access Results</button>
+        </div>
+        
+        <div id="resultsBox" class="hidden">
+            <div class="card">
+                <h1>📊 Voting Results - Grade 12 Committee Election</h1>
+                <div id="totalVotes"></div>
+                <table id="resultsTable">
+                    <thead>
+                        <tr><th>Rank</th><th>Candidate Name</th><th>Votes</th></tr>
+                    </thead>
+                    <tbody id="resultsBody"></tbody>
+                </table>
+                <button onclick="logout()" style="margin-top: 20px;">Logout</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const ADMIN_PASSWORD = 'everest2026';
+        const API_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
+        
+        function login() {
+            const password = document.getElementById('adminPassword').value;
+            if (password === ADMIN_PASSWORD) {
+                document.getElementById('loginBox').classList.add('hidden');
+                document.getElementById('resultsBox').classList.remove('hidden');
+                loadResults();
+            } else {
+                document.getElementById('loginError').textContent = 'Incorrect password';
+            }
+        }
+        
+        function logout() {
+            document.getElementById('loginBox').classList.remove('hidden');
+            document.getElementById('resultsBox').classList.add('hidden');
+            document.getElementById('adminPassword').value = '';
+        }
+        
+        async function loadResults() {
+            try {
+                const response = await fetch(`${API_URL}?action=getCandidates`);
+                const candidates = await response.json();
+                const sorted = [...candidates].sort((a, b) => b.votes - a.votes);
+                const totalVotes = candidates.reduce((sum, c) => sum + c.votes, 0);
+                
+                document.getElementById('totalVotes').innerHTML = `<p>Total votes cast: ${totalVotes}</p>`;
+                
+                const tbody = document.getElementById('resultsBody');
+                tbody.innerHTML = '';
+                
+                sorted.forEach((candidate, index) => {
+                    const row = tbody.insertRow();
+                    if (index < 13) row.className = 'winner';
+                    row.insertCell(0).textContent = index + 1;
+                    row.insertCell(1).textContent = candidate.name;
+                    row.insertCell(2).textContent = candidate.votes;
+                });
+            } catch (error) {
+                console.error('Failed to load results:', error);
+            }
+        }
+    </script>
+</body>
+</html>
